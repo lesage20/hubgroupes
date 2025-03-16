@@ -147,7 +147,7 @@ const subscribeToNewsletter = () => {
     </section>
 
     <!-- Stats Section -->
-    <section class="py-16 bg-indigo-50">
+    <section class="py-16 bg-indigo-100">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="text-3xl font-bold text-center mb-4">HubGroupes en chiffres</h2>
         <p class="text-center text-gray-600 mb-12">Notre plateforme aide des milliers d'organisations à travers le monde
