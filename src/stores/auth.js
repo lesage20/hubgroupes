@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export const useAuthStore = defineStore('auth', () => {
   // État
-  const user = ref(null)
+  const user = ref(JSON.parse(localStorage.getItem('user')) || null)
   const token = ref(localStorage.getItem('token') || null)
   const loading = ref(false)
   const error = ref(null)
@@ -15,6 +15,8 @@ export const useAuthStore = defineStore('auth', () => {
   // Actions
   function setUser(userData) {
     user.value = userData
+    // Persister l'utilisateur dans le localStorage
+    localStorage.setItem('user', JSON.stringify(userData))
   }
 
   function setToken(tokenValue) {
@@ -98,6 +100,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     token.value = null
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
   }
 
   async function fetchUserProfile() {
@@ -150,6 +153,8 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     fetchUserProfile,
-    clearError
+    clearError,
+    setUser,
+    setToken
   }
 })

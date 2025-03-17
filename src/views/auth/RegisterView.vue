@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AuthService from '@/services/authService'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
@@ -90,21 +91,29 @@ const handleRegister = async () => {
   errors.form = ''
 
   try {
-    await authStore.register({
+    // Utiliser le service d'authentification au lieu du store directement
+    const response = await AuthService.register({
       firstName: userData.firstName,
       lastName: userData.lastName,
-      phoneNumber: userData.phoneNumber,
-      password: userData.password
+      username: userData.phoneNumber,
+      password: userData.password,
+      phone_number: userData.phoneNumber
     })
 
-    showSuccessAlert.value = true
+    // Vérifier si l'inscription a réussi
+    if (response && response.data && response.data.data && response.data.data.token) {
+      showSuccessAlert.value = true
 
-    // Rediriger après un court délai pour montrer le message de succès
-    setTimeout(() => {
-      router.push({ name: 'login' })
-    }, 2000)
+      // Rediriger après un court délai pour montrer le message de succès
+      setTimeout(() => {
+        router.push({ name: 'login' })
+      }, 2000)
+    } else {
+      errors.form = 'Réponse du serveur invalide'
+    }
   } catch (error) {
-    errors.form = error || 'Une erreur est survenue lors de l\'inscription'
+    console.error('Erreur d\'inscription:', error)
+    errors.form = error?.message || 'Une erreur est survenue lors de l\'inscription'
   } finally {
     isLoading.value = false
   }

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import AuthService from '@/services/authService'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
@@ -9,10 +10,10 @@ import BaseCard from '@/components/common/BaseCard.vue'
 const authStore = useAuthStore()
 
 const userProfile = reactive({
-  firstName: '',
-  lastName: '',
+  first_name: '',
+  last_name: '',
   email: '',
-  phone: '',
+  phone_number: '',
   bio: '',
   currentPassword: '',
   newPassword: '',
@@ -20,10 +21,10 @@ const userProfile = reactive({
 })
 
 const errors = reactive({
-  firstName: '',
-  lastName: '',
+  first_name: '',
+  last_name: '',
   email: '',
-  phone: '',
+  phone_number: '',
   bio: '',
   currentPassword: '',
   newPassword: '',
@@ -39,13 +40,31 @@ const activeTab = ref('profile')
 
 onMounted(async () => {
   try {
-    const user = await authStore.fetchUserProfile()
+    console.log('Chargement du profil utilisateur...')
+    const user = authStore.user
+    
     if (user) {
-      userProfile.firstName = user.firstName || ''
-      userProfile.lastName = user.lastName || ''
+      console.log('Données utilisateur récupérées:', user)
+      userProfile.first_name = user.first_name || ''
+      userProfile.last_name = user.last_name || ''
       userProfile.email = user.email || ''
-      userProfile.phone = user.phone || ''
+      userProfile.phone_number = user.phone_number || ''
       userProfile.bio = user.bio || ''
+    } else {
+      console.log('Aucune donnée utilisateur disponible, récupération du profil...')
+      try {
+        await AuthService.fetchCurrentUserProfile()
+        const updatedUser = authStore.user
+        if (updatedUser) {
+          userProfile.first_name = updatedUser.first_name || ''
+          userProfile.last_name = updatedUser.last_name || ''
+          userProfile.email = updatedUser.email || ''
+          userProfile.phone_number = updatedUser.phone_number || ''
+          userProfile.bio = updatedUser.bio || ''
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération du profil:', error)
+      }
     }
   } catch (error) {
     console.error('Erreur lors du chargement du profil:', error)
@@ -56,22 +75,22 @@ const validateProfileForm = () => {
   let isValid = true
   
   // Réinitialiser les erreurs
-  errors.firstName = ''
-  errors.lastName = ''
+  errors.first_name = ''
+  errors.last_name = ''
   errors.email = ''
-  errors.phone = ''
+  errors.phone_number = ''
   errors.bio = ''
   errors.form = ''
   
   // Valider le prénom
-  if (!userProfile.firstName) {
-    errors.firstName = 'Le prénom est requis'
+  if (!userProfile.first_name) {
+    errors.first_name = 'Le prénom est requis'
     isValid = false
   }
   
   // Valider le nom
-  if (!userProfile.lastName) {
-    errors.lastName = 'Le nom est requis'
+  if (!userProfile.last_name) {
+    errors.last_name = 'Le nom est requis'
     isValid = false
   }
   
@@ -85,8 +104,8 @@ const validateProfileForm = () => {
   }
   
   // Valider le téléphone (optionnel)
-  if (userProfile.phone && !/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/.test(userProfile.phone)) {
-    errors.phone = 'Format de téléphone invalide'
+  if (userProfile.phone_number && !/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/.test(userProfile.phone_number)) {
+    errors.phone_number = 'Format de téléphone invalide'
     isValid = false
   }
   
@@ -136,22 +155,23 @@ const updateProfile = async () => {
   errors.form = ''
   
   try {
-    await authStore.updateProfile({
-      firstName: userProfile.firstName,
-      lastName: userProfile.lastName,
+    await AuthService.updateProfile({
+      first_name: userProfile.first_name,
+      last_name: userProfile.last_name,
       email: userProfile.email,
-      phone: userProfile.phone,
-      bio: userProfile.bio
+      phone_number: userProfile.phone_number,
+      bio: userProfile.bio,
+      username: userProfile.phone_number
     })
     
     showSuccessAlert.value = true
     
-    // Masquer l'alerte après un délai
     setTimeout(() => {
       showSuccessAlert.value = false
     }, 3000)
   } catch (error) {
-    errors.form = error || 'Une erreur est survenue lors de la mise à jour du profil'
+    console.error('Erreur lors de la mise à jour du profil:', error)
+    errors.form = error?.message || 'Une erreur est survenue lors de la mise à jour du profil'
   } finally {
     isLoading.value = false
   }
@@ -164,24 +184,23 @@ const updatePassword = async () => {
   errors.form = ''
   
   try {
-    await authStore.updatePassword({
-      currentPassword: userProfile.currentPassword,
-      newPassword: userProfile.newPassword
+    await AuthService.updatePassword({
+      current_password: userProfile.currentPassword,
+      new_password: userProfile.newPassword
     })
     
-    // Réinitialiser les champs de mot de passe
     userProfile.currentPassword = ''
     userProfile.newPassword = ''
     userProfile.confirmNewPassword = ''
     
     showPasswordSuccessAlert.value = true
     
-    // Masquer l'alerte après un délai
     setTimeout(() => {
       showPasswordSuccessAlert.value = false
     }, 3000)
   } catch (error) {
-    errors.form = error || 'Une erreur est survenue lors de la mise à jour du mot de passe'
+    console.error('Erreur lors de la mise à jour du mot de passe:', error)
+    errors.form = error?.message || 'Une erreur est survenue lors de la mise à jour du mot de passe'
   } finally {
     isPasswordLoading.value = false
   }
@@ -199,56 +218,85 @@ const updatePassword = async () => {
           <div class="flex flex-col items-center">
             <div class="relative">
               <img
-                class="h-32 w-32 rounded-full object-cover"
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                :src="authStore.user?.avatar || 'https://ui-avatars.com/api/?name=' + userProfile.first_name + '+' + userProfile.last_name + '&background=6366f1&color=fff'"
                 alt="Photo de profil"
+                class="h-32 w-32 rounded-full object-cover"
               />
               <button
-                type="button"
-                class="absolute bottom-0 right-0 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                class="absolute bottom-0 right-0 rounded-full bg-indigo-600 p-1 text-white shadow-sm"
+                title="Changer la photo de profil"
               >
-                <span class="sr-only">Modifier la photo</span>
-                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
                 </svg>
               </button>
             </div>
-            <h2 class="mt-4 text-xl font-medium text-gray-900">{{ userProfile.firstName }} {{ userProfile.lastName }}</h2>
+            <h2 class="mt-4 text-xl font-semibold text-gray-900">{{ userProfile.first_name }} {{ userProfile.last_name }}</h2>
             <p class="text-sm text-gray-500">{{ userProfile.email }}</p>
           </div>
           
-          <div class="mt-6 border-t border-gray-200 pt-4">
-            <nav class="flex flex-col space-y-1">
-              <button
-                @click="activeTab = 'profile'"
-                class="px-3 py-2 text-sm font-medium rounded-md"
-                :class="activeTab === 'profile' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'"
-              >
-                Informations personnelles
-              </button>
-              <button
-                @click="activeTab = 'security'"
-                class="px-3 py-2 text-sm font-medium rounded-md"
-                :class="activeTab === 'security' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'"
-              >
-                Sécurité
-              </button>
-              <button
-                @click="activeTab = 'notifications'"
-                class="px-3 py-2 text-sm font-medium rounded-md"
-                :class="activeTab === 'notifications' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'"
-              >
-                Notifications
-              </button>
-              <button
-                @click="activeTab = 'billing'"
-                class="px-3 py-2 text-sm font-medium rounded-md"
-                :class="activeTab === 'billing' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'"
-              >
-                Facturation
-              </button>
-            </nav>
-          </div>
+          <nav class="mt-6 space-y-1">
+            <button
+              @click="activeTab = 'profile'"
+              :class="[
+                'flex w-full items-center px-3 py-2 text-sm font-medium rounded-md',
+                activeTab === 'profile'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              ]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              Informations personnelles
+            </button>
+            
+            <button
+              @click="activeTab = 'security'"
+              :class="[
+                'flex w-full items-center px-3 py-2 text-sm font-medium rounded-md',
+                activeTab === 'security'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              ]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              Sécurité
+            </button>
+            
+            <button
+              @click="activeTab = 'notifications'"
+              :class="[
+                'flex w-full items-center px-3 py-2 text-sm font-medium rounded-md',
+                activeTab === 'notifications'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              ]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              Notifications
+            </button>
+            
+            <button
+              @click="activeTab = 'billing'"
+              :class="[
+                'flex w-full items-center px-3 py-2 text-sm font-medium rounded-md',
+                activeTab === 'billing'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              ]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+              </svg>
+              Facturation
+            </button>
+          </nav>
         </BaseCard>
       </div>
       
@@ -259,48 +307,53 @@ const updatePassword = async () => {
           <BaseAlert
             v-if="showSuccessAlert"
             type="success"
-            message="Vos informations ont été mises à jour avec succès !"
-            :auto-close="true"
+            message="Votre profil a été mis à jour avec succès !"
+            :dismissible="true"
           />
           
           <BaseAlert
-            v-if="errors.form && activeTab === 'profile'"
+            v-if="errors.form"
             type="error"
             :message="errors.form"
+            :dismissible="true"
           />
           
           <form @submit.prevent="updateProfile" class="space-y-6">
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
               <BaseInput
-                v-model="userProfile.firstName"
+                v-model="userProfile.first_name"
                 label="Prénom"
                 type="text"
+                placeholder="Jean"
                 :required="true"
-                :error="errors.firstName"
+                :error="errors.first_name"
               />
               
               <BaseInput
-                v-model="userProfile.lastName"
+                v-model="userProfile.last_name"
                 label="Nom"
                 type="text"
+                placeholder="Dupont"
                 :required="true"
-                :error="errors.lastName"
+                :error="errors.last_name"
               />
             </div>
             
             <BaseInput
               v-model="userProfile.email"
-              label="Adresse email"
+              label="Email"
               type="email"
+              placeholder="jean.dupont@example.com"
               :required="true"
               :error="errors.email"
             />
             
             <BaseInput
-              v-model="userProfile.phone"
+              v-model="userProfile.phone_number"
               label="Téléphone"
               type="tel"
-              :error="errors.phone"
+              placeholder="+33 6 12 34 56 78"
+              :error="errors.phone_number"
             />
             
             <div>
@@ -310,11 +363,11 @@ const updatePassword = async () => {
                   id="bio"
                   v-model="userProfile.bio"
                   rows="4"
-                  class="w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  :class="{ 'border-red-500': errors.bio }"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  placeholder="Parlez-nous de vous..."
                 ></textarea>
               </div>
-              <p v-if="errors.bio" class="mt-1 text-sm text-red-600">{{ errors.bio }}</p>
+              <p v-if="errors.bio" class="mt-2 text-sm text-red-600">{{ errors.bio }}</p>
             </div>
             
             <div class="flex justify-end">
@@ -335,13 +388,14 @@ const updatePassword = async () => {
             v-if="showPasswordSuccessAlert"
             type="success"
             message="Votre mot de passe a été mis à jour avec succès !"
-            :auto-close="true"
+            :dismissible="true"
           />
           
           <BaseAlert
-            v-if="errors.form && activeTab === 'security'"
+            v-if="errors.form"
             type="error"
             :message="errors.form"
+            :dismissible="true"
           />
           
           <form @submit.prevent="updatePassword" class="space-y-6">
@@ -349,25 +403,30 @@ const updatePassword = async () => {
               v-model="userProfile.currentPassword"
               label="Mot de passe actuel"
               type="password"
+              placeholder="••••••••"
               :required="true"
               :error="errors.currentPassword"
             />
             
-            <BaseInput
-              v-model="userProfile.newPassword"
-              label="Nouveau mot de passe"
-              type="password"
-              :required="true"
-              :error="errors.newPassword"
-            />
-            
-            <BaseInput
-              v-model="userProfile.confirmNewPassword"
-              label="Confirmer le nouveau mot de passe"
-              type="password"
-              :required="true"
-              :error="errors.confirmNewPassword"
-            />
+            <div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+              <BaseInput
+                v-model="userProfile.newPassword"
+                label="Nouveau mot de passe"
+                type="password"
+                placeholder="••••••••"
+                :required="true"
+                :error="errors.newPassword"
+              />
+              
+              <BaseInput
+                v-model="userProfile.confirmNewPassword"
+                label="Confirmer le nouveau mot de passe"
+                type="password"
+                placeholder="••••••••"
+                :required="true"
+                :error="errors.confirmNewPassword"
+              />
+            </div>
             
             <div class="flex justify-end">
               <BaseButton
@@ -379,32 +438,6 @@ const updatePassword = async () => {
               </BaseButton>
             </div>
           </form>
-          
-          <div class="mt-8 border-t border-gray-200 pt-6">
-            <h3 class="text-lg font-medium text-gray-900">Sessions actives</h3>
-            <p class="mt-1 text-sm text-gray-500">Si nécessaire, vous pouvez vous déconnecter de toutes vos autres sessions de navigateur sur tous vos appareils.</p>
-            
-            <div class="mt-4">
-              <BaseButton
-                variant="danger"
-              >
-                Se déconnecter des autres sessions
-              </BaseButton>
-            </div>
-          </div>
-          
-          <div class="mt-8 border-t border-gray-200 pt-6">
-            <h3 class="text-lg font-medium text-red-600">Zone de danger</h3>
-            <p class="mt-1 text-sm text-gray-500">Une fois que vous supprimez votre compte, toutes vos ressources et données seront définitivement supprimées.</p>
-            
-            <div class="mt-4">
-              <BaseButton
-                variant="danger"
-              >
-                Supprimer mon compte
-              </BaseButton>
-            </div>
-          </div>
         </BaseCard>
         
         <!-- Notifications -->
@@ -416,7 +449,7 @@ const updatePassword = async () => {
               
               <div class="mt-4 space-y-4">
                 <div class="flex items-start">
-                  <div class="flex items-center h-5">
+                  <div class="flex h-5 items-center">
                     <input
                       id="comments"
                       name="comments"
@@ -426,73 +459,53 @@ const updatePassword = async () => {
                   </div>
                   <div class="ml-3 text-sm">
                     <label for="comments" class="font-medium text-gray-700">Commentaires</label>
-                    <p class="text-gray-500">Recevez une notification lorsque quelqu'un commente sur votre profil.</p>
+                    <p class="text-gray-500">Recevez une notification lorsque quelqu'un commente dans vos communautés.</p>
                   </div>
                 </div>
                 
                 <div class="flex items-start">
-                  <div class="flex items-center h-5">
-                    <input
-                      id="events"
-                      name="events"
-                      type="checkbox"
-                      class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      checked
-                    />
-                  </div>
-                  <div class="ml-3 text-sm">
-                    <label for="events" class="font-medium text-gray-700">Événements</label>
-                    <p class="text-gray-500">Recevez une notification lorsqu'un événement est créé ou modifié.</p>
-                  </div>
-                </div>
-                
-                <div class="flex items-start">
-                  <div class="flex items-center h-5">
+                  <div class="flex h-5 items-center">
                     <input
                       id="messages"
                       name="messages"
                       type="checkbox"
                       class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      checked
                     />
                   </div>
                   <div class="ml-3 text-sm">
                     <label for="messages" class="font-medium text-gray-700">Messages</label>
-                    <p class="text-gray-500">Recevez une notification lorsque vous recevez un message.</p>
+                    <p class="text-gray-500">Recevez une notification lorsque quelqu'un vous envoie un message.</p>
                   </div>
                 </div>
-              </div>
-            </div>
-            
-            <div class="border-t border-gray-200 pt-6">
-              <h3 class="text-lg font-medium text-gray-900">Notifications push</h3>
-              <p class="mt-1 text-sm text-gray-500">Configurez les notifications push sur votre appareil mobile.</p>
-              
-              <div class="mt-4">
-                <div class="flex items-center">
-                  <button
-                    type="button"
-                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-200 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    role="switch"
-                    aria-checked="false"
-                  >
-                    <span class="sr-only">Activer les notifications push</span>
-                    <span class="translate-x-0 pointer-events-none relative inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out">
-                      <span class="opacity-0 duration-100 ease-out absolute inset-0 h-full w-full flex items-center justify-center transition-opacity" aria-hidden="true">
-                        <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 12 12">
-                          <path d="M4 8l2-2m0 0l2-2M6 6L4 4m2 2l2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                      </span>
-                      <span class="opacity-100 duration-200 ease-in absolute inset-0 h-full w-full flex items-center justify-center transition-opacity" aria-hidden="true">
-                        <svg class="h-3 w-3 text-indigo-600" fill="currentColor" viewBox="0 0 12 12">
-                          <path d="M3.707 5.293a1 1 0 00-1.414 1.414l1.414-1.414zM5 8l-.707.707a1 1 0 001.414 0L5 8zm4.707-3.293a1 1 0 00-1.414-1.414l1.414 1.414zm-7.414 2l2 2 1.414-1.414-2-2-1.414 1.414zm3.414 2l4-4-1.414-1.414-4 4 1.414 1.414z" />
-                        </svg>
-                      </span>
-                    </span>
-                  </button>
-                  <span class="ml-3">
-                    <span class="text-sm font-medium text-gray-900">Activer les notifications push</span>
-                  </span>
+                
+                <div class="flex items-start">
+                  <div class="flex h-5 items-center">
+                    <input
+                      id="events"
+                      name="events"
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label for="events" class="font-medium text-gray-700">Événements</label>
+                    <p class="text-gray-500">Recevez une notification pour les nouveaux événements dans vos communautés.</p>
+                  </div>
+                </div>
+                
+                <div class="flex items-start">
+                  <div class="flex h-5 items-center">
+                    <input
+                      id="newsletter"
+                      name="newsletter"
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label for="newsletter" class="font-medium text-gray-700">Newsletter</label>
+                    <p class="text-gray-500">Recevez notre newsletter mensuelle avec les dernières actualités.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -512,37 +525,28 @@ const updatePassword = async () => {
           <div class="space-y-6">
             <div>
               <h3 class="text-lg font-medium text-gray-900">Plan actuel</h3>
-              <div class="mt-4 flex items-center justify-between bg-gray-50 p-4 rounded-md">
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Plan Gratuit</p>
-                  <p class="text-sm text-gray-500">Accès aux fonctionnalités de base</p>
+              <div class="mt-4 bg-gray-50 p-4 rounded-md">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="text-md font-medium text-gray-900">Plan Gratuit</h4>
+                    <p class="text-sm text-gray-500">Accès aux fonctionnalités de base</p>
+                  </div>
+                  <BaseButton variant="outline">Mettre à niveau</BaseButton>
                 </div>
-                <BaseButton
-                  variant="secondary"
-                  size="sm"
-                >
-                  Mettre à niveau
-                </BaseButton>
               </div>
             </div>
             
-            <div class="border-t border-gray-200 pt-6">
+            <div>
+              <h3 class="text-lg font-medium text-gray-900">Historique de paiement</h3>
+              <p class="mt-1 text-sm text-gray-500">Aucun paiement effectué pour le moment.</p>
+            </div>
+            
+            <div>
               <h3 class="text-lg font-medium text-gray-900">Méthode de paiement</h3>
-              <p class="mt-1 text-sm text-gray-500">Aucune méthode de paiement enregistrée</p>
-              
+              <p class="mt-1 text-sm text-gray-500">Aucune méthode de paiement enregistrée.</p>
               <div class="mt-4">
-                <BaseButton
-                  variant="secondary"
-                  size="sm"
-                >
-                  Ajouter une méthode de paiement
-                </BaseButton>
+                <BaseButton variant="outline">Ajouter une méthode de paiement</BaseButton>
               </div>
-            </div>
-            
-            <div class="border-t border-gray-200 pt-6">
-              <h3 class="text-lg font-medium text-gray-900">Historique de facturation</h3>
-              <p class="mt-1 text-sm text-gray-500">Vous n'avez pas encore de factures</p>
             </div>
           </div>
         </BaseCard>

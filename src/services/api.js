@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from './endpoints';
+import { useAuthStore } from '@/stores/auth';
 
 /**
  * Configuration de l'instance Axios avec les paramètres par défaut
@@ -13,18 +14,30 @@ const apiClient = axios.create({
   timeout: 10000 // 10 secondes
 });
 
+// Log pour vérifier l'URL de base
+console.log('API Base URL:', API_BASE_URL);
+
 /**
  * Intercepteur pour ajouter le token d'authentification à chaque requête
  */
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const authStore = useAuthStore();
+      const token = authStore.token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        console.log(`Request to ${config.url} with auth token`);
+      } else {
+        console.log(`Request to ${config.url} without auth token`);
+      }
+    } catch (error) {
+      console.error('Error in request interceptor:', error);
     }
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -38,17 +51,29 @@ apiClient.interceptors.request.use(
  */
 apiClient.interceptors.response.use(
   (response) => {
+    console.log(`Response from ${response.config.url}:`, response.status);
+    // Log pour déboguer la structure de la réponse
+    if (response.config.url.includes('/auth/')) {
+      console.log('Auth response structure:', JSON.stringify(response.data));
+    }
     return response;
   },
   (error) => {
     if (error.response) {
       const { status } = error.response;
+      console.error(`Error ${status} from ${error.config?.url}:`, error.response.data);
 
       // Token expiré ou invalide
       if (status === 401) {
-        // Supprimer le token et rediriger vers la page de connexion
-        localStorage.removeItem('token');
-        window.location.href = '/login';
+        try {
+          // Supprimer le token et rediriger vers la page de connexion
+          const authStore = useAuthStore();
+          authStore.logout();
+          console.log('User logged out due to 401 error');
+          window.location.href = '/login';
+        } catch (e) {
+          console.error('Error during logout after 401:', e);
+        }
       }
 
       // Afficher un message d'erreur approprié
@@ -56,10 +81,10 @@ apiClient.interceptors.response.use(
       console.error(`Erreur ${status}: ${errorMessage}`);
     } else if (error.request) {
       // La requête a été faite mais aucune réponse n'a été reçue
-      console.error('Aucune réponse reçue du serveur');
+      console.error('No response received:', error.request);
     } else {
       // Une erreur s'est produite lors de la configuration de la requête
-      console.error('Erreur lors de la configuration de la requête:', error.message);
+      console.error('Request configuration error:', error.message);
     }
 
     return Promise.reject(error);

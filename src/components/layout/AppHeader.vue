@@ -3,6 +3,7 @@ import { RouterLink } from 'vue-router'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AuthService from '@/services/authService'
 
 // État pour gérer l'affichage du menu mobile
 const isMobileMenuOpen = ref(false)
@@ -12,7 +13,7 @@ const authStore = useAuthStore()
 
 // Vérifier si l'utilisateur est authentifié
 const isAuthenticated = computed(() => {
-  return !!localStorage.getItem('token')
+  return AuthService.isLoggedIn()
 })
 
 // Récupérer les informations de l'utilisateur
@@ -30,8 +31,14 @@ const getUserInitials = computed(() => {
 
 // Fonction pour déconnexion
 const logout = () => {
-  localStorage.removeItem('token')
-  router.push({ name: 'login' })
+  AuthService.logout()
+    .then(() => {
+      router.push({ name: 'login' })
+    })
+    .catch(error => {
+      console.error('Erreur lors de la déconnexion:', error)
+      router.push({ name: 'login' })
+    })
 }
 
 // Fonction pour basculer le menu utilisateur

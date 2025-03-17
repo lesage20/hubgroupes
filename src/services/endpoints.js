@@ -4,13 +4,18 @@
  */
 
 // URL de base de l'API
-export const API_BASE_URL = 'https://api.hubgroupes.com/api/v1';
+// Pour le développement local, utilisez http://localhost:3000/
+// Pour la production, utilisez https://api.hubgroupes.com/
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/';
+
+// Log pour vérifier l'URL de base
+console.log('API Base URL configurée:', API_BASE_URL);
 
 // Endpoints d'authentification
 export const AUTH = {
-  LOGIN: '/auth/login',
+  LOGIN: '/auth/sign-in',
   REGISTER: '/auth/register',
-  LOGOUT: '/auth/logout',
+  LOGOUT: '/auth/sign-out',
   REFRESH_TOKEN: '/auth/refresh-token',
   FORGOT_PASSWORD: '/auth/forgot-password',
   RESET_PASSWORD: '/auth/reset-password',
@@ -20,22 +25,24 @@ export const AUTH = {
 // Endpoints des utilisateurs
 export const USERS = {
   ME: '/users/me',
+  PROFILE: (id) => `/user/${id}`,
   GET_ALL: '/users',
-  GET_BY_ID: (id) => `/users/${id}`,
-  UPDATE: (id) => `/users/${id}`,
-  DELETE: (id) => `/users/${id}`,
-  UPDATE_AVATAR: (id) => `/users/${id}/avatar`,
-  CHANGE_PASSWORD: (id) => `/users/${id}/change-password`
+  GET_BY_ID: (id) => `/user/${id}`,
+  UPDATE: (id) => `/user/${id}`,
+  DELETE: (id) => `/user/${id}`,
+  UPDATE_AVATAR: (id) => `/user/profile-picture`,
+  CHANGE_PASSWORD: (id) => `/user/change-password`
 };
 
 // Endpoints des communautés
 export const COMMUNITIES = {
-  GET_ALL: '/communities',
+  GET_ALL: '/communities/all',
+  GET_MY_COMMUNITIES: '/communities/my-communities',
   GET_BY_ID: (id) => `/communities/${id}`,
   CREATE: '/communities',
   UPDATE: (id) => `/communities/${id}`,
   DELETE: (id) => `/communities/${id}`,
-  GET_MEMBERS: (id) => `/communities/${id}/members`,
+  GET_MEMBERS: (id) => `/communities/${id}/members/all`,
   ADD_MEMBER: (id) => `/communities/${id}/members`,
   REMOVE_MEMBER: (id, memberId) => `/communities/${id}/members/${memberId}`,
   UPDATE_COVER: (id) => `/communities/${id}/cover`

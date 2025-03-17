@@ -3,6 +3,7 @@ import { RouterLink } from 'vue-router'
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AuthService from '@/services/authService'
 
 const isOpen = ref(true)
 const router = useRouter()
@@ -16,15 +17,21 @@ const user = computed(() => {
 // Fonction pour obtenir les initiales de l'utilisateur
 const getUserInitials = computed(() => {
   if (!user.value) return 'U';
-  const firstName = user.value.firstName || '';
-  const lastName = user.value.lastName || '';
+  const firstName = user.value.first_name || '';
+  const lastName = user.value.last_name || '';
   return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
 })
 
 // Fonction pour déconnexion
 const logout = () => {
-  localStorage.removeItem('token')
-  router.push({ name: 'login' })
+  AuthService.logout()
+    .then(() => {
+      router.push({ name: 'login' })
+    })
+    .catch(error => {
+      console.error('Erreur lors de la déconnexion:', error)
+      router.push({ name: 'login' })
+    })
 }
 
 // Fonction pour basculer la sidebar
@@ -64,9 +71,9 @@ const toggleSidebar = () => {
               {{ getUserInitials }}
             </div>
             <div v-if="isOpen" class="ml-3">
-              <div class="text-sm font-medium text-gray-900">{{ user ? `${user.firstName} ${user.lastName}` :
+              <div class="text-sm font-medium text-gray-900">{{ user ? `${user.first_name} ${user.last_name}` :
                 'Utilisateur' }}</div>
-              <div class="text-xs text-gray-500">{{ user ? user.phone : '' }}</div>
+              <div class="text-xs text-gray-500">{{ user ? user.phone_number : '' }}</div>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -153,7 +154,10 @@ const router = createRouter({
 
 // Navigation guard
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = !!localStorage.getItem('token')
+  // Initialiser le store à l'intérieur du guard pour éviter les problèmes de composition API
+  const authStore = useAuthStore()
+  const isAuthenticated = !!authStore.token
+  console.log({ isAuthenticated, authStore })
   
   if (to.meta.requiresAuth && !isAuthenticated) {
     next({ name: 'login' })
