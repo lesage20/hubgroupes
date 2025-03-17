@@ -2,24 +2,30 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCommunityStore } from '@/stores/community'
+import { useAuthStore } from '@/stores/auth'
+import CommunityService from '@/services/communityService'
 import BaseCard from '@/components/common/BaseCard.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
+import CommunityForm from '@/components/community/CommunityForm.vue'
 
 const router = useRouter()
 const communityStore = useCommunityStore()
+const authStore = useAuthStore()
 
 const communities = ref([])
 const isLoading = ref(true)
 const error = ref(null)
 const searchQuery = ref('')
-const selectedFilter = ref('all') // all, owner, member
+const selectedFilter = ref('owner') // public, owner
+const refreshing = ref(false)
+const showCreateModal = ref(false)
 
 // Filtres disponibles
 const filters = [
-  { id: 'all', name: 'Toutes' },
-  { id: 'owner', name: 'Mes communautés' },
-  { id: 'member', name: 'Membre' }
+  { id: 'public', name: 'Publiques' },
+  { id: 'owner', name: 'Mes communautés' }
 ]
 
 onMounted(async () => {
@@ -29,15 +35,49 @@ onMounted(async () => {
 const fetchCommunities = async () => {
   isLoading.value = true
   error.value = null
-  
+
   try {
-    communities.value = await communityStore.fetchCommunities()
+    // Vérifier si l'utilisateur est connecté
+    if (!authStore.user || !authStore.user.id) {
+      console.error('Aucun utilisateur connecté ou ID utilisateur manquant')
+      throw new Error('Utilisateur non connecté')
+    }
+
+    // Récupérer les communautés de l'utilisateur via le service
+    const userId = authStore.user.id
+    const response = await CommunityService.getMyCommunities(userId)
+
+    if (response?.data?.data?.communities) {
+      communities.value = response.data.data.communities.map(community => ({
+        ...community,
+        // isOwner: community.role === 'owner' || community.role === 'admin',
+        isMember: true
+      }))
+    } else {
+    // Fallback pour le développement
+      communities.value = await communityStore.fetchCommunities()
+    }
   } catch (err) {
     error.value = 'Erreur lors du chargement des communautés'
-    console.error(err)
+    console.error('Erreur lors du chargement des communautés:', err)
+
+    // Fallback pour le développement
+    try {
+      communities.value = await communityStore.fetchCommunities()
+    } catch (fallbackErr) {
+      console.error('Erreur lors du chargement des communautés de fallback:', fallbackErr)
+    }
   } finally {
     isLoading.value = false
+    refreshing.value = false
   }
+}
+
+const refreshCommunities = async () => {
+  if (refreshing.value || isLoading.value) return
+  
+  refreshing.value = true
+  await fetchCommunities()
 }
 
 const filteredCommunities = computed(() => {
@@ -45,32 +85,67 @@ const filteredCommunities = computed(() => {
 
   // Appliquer le filtre par type
   if (selectedFilter.value === 'owner') {
-    filtered = filtered.filter(community => community.isOwner)
-  } else if (selectedFilter.value === 'member') {
-    filtered = filtered.filter(community => community.isMember && !community.isOwner)
+    filtered = filtered
+  } else if (selectedFilter.value === 'public') {
+    // Pour le moment, toutes les communautés sont considérées comme publiques
+    // Aucun filtrage supplémentaire n'est nécessaire
   }
 
   // Appliquer la recherche
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(community => 
-      community.name.toLowerCase().includes(query) || 
-      community.description.toLowerCase().includes(query)
+    filtered = filtered.filter(community =>
+      community.name.toLowerCase().includes(query) ||
+      (community.description && community.description.toLowerCase().includes(query))
     )
   }
 
   return filtered
 })
 
+// Nombre total de communautés et nombre de communautés filtrées
+const totalCount = computed(() => communities.value.length)
+const filteredCount = computed(() => filteredCommunities.value.length)
+
 const navigateToDetail = (communityId) => {
   router.push({ name: 'community-details', params: { id: communityId } })
 }
 
-const navigateToCreate = () => {
-  router.push({ name: 'community-create' })
+const openCreateModal = () => {
+  showCreateModal.value = true
 }
-const editCommunity = () => {
-  router.push({ name: "community-edit" })
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+}
+
+const handleCommunityCreated = async (newCommunity) => {
+  // Fermer le modal
+  closeCreateModal()
+  
+  // Rafraîchir la liste des communautés
+  await fetchCommunities()
+  
+  // Optionnel : rediriger vers la page de détail de la nouvelle communauté
+  if (newCommunity && newCommunity.id) {
+    router.push({ name: 'community-details', params: { id: newCommunity.id } })
+  }
+}
+
+const editCommunity = (communityId, event) => {
+  event.stopPropagation()
+  router.push({ name: 'community-edit', params: { id: communityId } })
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('fr-FR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  }).format(date)
 }
 </script>
 
@@ -81,14 +156,33 @@ const editCommunity = () => {
         <h1 class="text-2xl font-bold text-gray-900">Communautés</h1>
         <p class="text-gray-600 mt-1">Découvrez et rejoignez des communautés ou créez la vôtre</p>
       </div>
-      <BaseButton variant="primary" class="mt-4 md:mt-0" @click="navigateToCreate">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd"
-            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-            clip-rule="evenodd" />
-        </svg>
-        Créer une communauté
-      </BaseButton>
+      <div class="flex gap-2 mt-4 md:mt-0">
+        <button 
+          @click="refreshCommunities" 
+          class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          :disabled="refreshing || isLoading"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            class="h-4 w-4 mr-2" 
+            :class="{ 'animate-spin': refreshing }"
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Rafraîchir
+        </button>
+        <BaseButton variant="primary" @click="openCreateModal">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd"
+              d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+              clip-rule="evenodd" />
+          </svg>
+          Créer une communauté
+        </BaseButton>
+      </div>
     </div>
 
     <!-- Filtres et recherche -->
@@ -118,6 +212,17 @@ const editCommunity = () => {
       </div>
     </div>
 
+    <!-- Compteur d'éléments -->
+    <div class="flex justify-between items-center mb-4">
+      <div class="text-sm text-gray-700">
+        <span v-if="!isLoading">
+          <span class="font-medium">{{ filteredCount }}</span> communauté{{ filteredCount !== 1 ? 's' : '' }} 
+          <span v-if="filteredCount !== totalCount">(sur {{ totalCount }} au total)</span>
+        </span>
+        <span v-else>Chargement des communautés...</span>
+      </div>
+    </div>
+
     <!-- Message d'erreur -->
     <BaseAlert v-if="error" type="error" :message="error" />
 
@@ -144,7 +249,7 @@ const editCommunity = () => {
         {{ searchQuery ? 'Essayez avec d\'autres termes de recherche' : 'Commencez par créer une nouvelle communauté' }}
       </p>
       <div class="mt-6" v-if="!searchQuery">
-        <BaseButton variant="primary" @click="navigateToCreate">
+        <BaseButton variant="primary" @click="openCreateModal">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd"
               d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
@@ -188,12 +293,12 @@ const editCommunity = () => {
                 <div class="flex items-center">
                   <div class="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-gray-200">
                     <img
-                      :src="community.coverImage || 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'"
+                      :src="community.coverImage || community.logo || 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'"
                       class="h-full w-full object-cover" alt="Couverture de la communauté" />
                   </div>
                   <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ community.name }}</div>
-                    <div class="text-xs text-gray-500 line-clamp-1 max-w-xs">{{ community.description }}</div>
+                    <div class="text-sm font-medium text-gray-900">{{ community.label }}</div>
+                    <div class="text-xs text-gray-500 line-clamp-1 max-w-xs">{{ community.short_description }}</div>
                   </div>
                 </div>
               </td>
@@ -201,63 +306,24 @@ const editCommunity = () => {
                 <div class="text-sm text-gray-900">{{ community.type || 'Communauté' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="flex -space-x-2 overflow-hidden mr-2">
-                    <img v-for="(member, index) in (community.recentMembers || []).slice(0, 3)" :key="index"
-                      class="inline-block h-6 w-6 rounded-full ring-2 ring-white"
-                      :src="member.avatar || 'https://ui-avatars.com/api/?name=User&background=random'"
-                      :alt="`${member.name || 'Membre'}`" />
-                  </div>
-                  <span class="text-sm text-gray-500">{{ community.memberCount || 0 }}</span>
-                </div>
+                <div class="text-sm text-gray-900">{{ community.member_count || 0 }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <span v-if="community.isOwner"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" viewBox="0 0 20 20"
-                      fill="currentColor">
-                      <path fill-rule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clip-rule="evenodd" />
-                    </svg>
-                    Propriétaire
-                  </span>
-                  <span v-else-if="community.isMember"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" viewBox="0 0 20 20"
-                      fill="currentColor">
-                      <path
-                        d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                    </svg>
-                    Membre
-                  </span>
-                  <span v-else
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    Non membre
-                  </span>
-                </div>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                  :class="community.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+                  {{ community.status === 'active' ? 'Actif' : 'Inactif' }}
+                </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-500">
-                  <span v-if="community.lastActivity" class="flex items-center">
-                    <svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                      fill="currentColor">
-                      <path fill-rule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                        clip-rule="evenodd" />
-                    </svg>
-                    {{ community.lastActivity }}
-                  </span>
-                  <span v-else>-</span>
-                </div>
+                <div class="text-sm text-gray-900">{{ formatDate(community.updatedAt || community.createdAt) }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button @click.stop="navigateToDetail(community.id)" class="text-indigo-600 hover:text-indigo-900 mr-3">
-                  Voir
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
+                <button v-if="community.isOwner" @click="editCommunity(community.id, $event)"
+                  class="text-indigo-600 hover:text-indigo-900 mr-2">
+                  Modifier
                 </button>
-                <button v-if="community.isOwner" @click.stop="editCommunity" class="text-blue-600 hover:text-blue-900">
-                  Éditer
+                <button class="text-indigo-600 hover:text-indigo-900">
+                  Voir
                 </button>
               </td>
             </tr>
@@ -265,5 +331,18 @@ const editCommunity = () => {
         </table>
       </div>
     </div>
+
+    <!-- Modal de création de communauté -->
+    <BaseModal 
+      :show="showCreateModal" 
+      title="Créer une nouvelle communauté" 
+      size="lg"
+      @close="closeCreateModal"
+    >
+      <CommunityForm 
+        @success="handleCommunityCreated" 
+        @cancel="closeCreateModal"
+      />
+    </BaseModal>
   </div>
 </template>

@@ -15,6 +15,16 @@ const CommunityService = {
   },
 
   /**
+   * Récupère les communautés de l'utilisateur connecté
+   * @param {string|number} userId - L'ID de l'utilisateur
+   * @param {Object} params - Les paramètres de filtrage additionnels (pagination, tri, etc.)
+   * @returns {Promise} - La promesse de la réponse
+   */
+  getMyCommunities(userId, params = {}) {
+    return ApiService.post(COMMUNITIES.GET_MY_COMMUNITIES, { userId, ...params });
+  },
+
+  /**
    * Récupère une communauté par son ID
    * @param {string|number} id - L'ID de la communauté
    * @returns {Promise} - La promesse de la réponse

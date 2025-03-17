@@ -36,16 +36,16 @@ export const USERS = {
 
 // Endpoints des communautés
 export const COMMUNITIES = {
-  GET_ALL: '/communities/all',
-  GET_MY_COMMUNITIES: '/communities/my-communities',
-  GET_BY_ID: (id) => `/communities/${id}`,
-  CREATE: '/communities',
-  UPDATE: (id) => `/communities/${id}`,
-  DELETE: (id) => `/communities/${id}`,
-  GET_MEMBERS: (id) => `/communities/${id}/members/all`,
-  ADD_MEMBER: (id) => `/communities/${id}/members`,
-  REMOVE_MEMBER: (id, memberId) => `/communities/${id}/members/${memberId}`,
-  UPDATE_COVER: (id) => `/communities/${id}/cover`
+  GET_ALL: '/community/all',
+  GET_MY_COMMUNITIES: '/community/my-communities',
+  GET_BY_ID: (id) => `/community/${id}`,
+  CREATE: '/community',
+  UPDATE: (id) => `/community/${id}`,
+  DELETE: (id) => `/community/${id}`,
+  GET_MEMBERS: (id) => `/community/${id}/members/all`,
+  ADD_MEMBER: (id) => `/community/${id}/members`,
+  REMOVE_MEMBER: (id, memberId) => `/community/${id}/members/${memberId}`,
+  UPDATE_COVER: (id) => `/community/${id}/cover`
 };
 
 // Endpoints des activités
