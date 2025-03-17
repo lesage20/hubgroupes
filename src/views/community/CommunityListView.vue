@@ -157,20 +157,13 @@ const formatDate = (dateString) => {
         <p class="text-gray-600 mt-1">Découvrez et rejoignez des communautés ou créez la vôtre</p>
       </div>
       <div class="flex gap-2 mt-4 md:mt-0">
-        <button 
-          @click="refreshCommunities" 
+        <button @click="refreshCommunities"
           class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          :disabled="refreshing || isLoading"
-        >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            class="h-4 w-4 mr-2" 
-            :class="{ 'animate-spin': refreshing }"
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          :disabled="refreshing || isLoading">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" :class="{ 'animate-spin': refreshing }"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           Rafraîchir
         </button>
@@ -216,7 +209,7 @@ const formatDate = (dateString) => {
     <div class="flex justify-between items-center mb-4">
       <div class="text-sm text-gray-700">
         <span v-if="!isLoading">
-          <span class="font-medium">{{ filteredCount }}</span> communauté{{ filteredCount !== 1 ? 's' : '' }} 
+          <span class="font-medium">{{ filteredCount }}</span> communauté{{ filteredCount !== 1 ? 's' : '' }}
           <span v-if="filteredCount !== totalCount">(sur {{ totalCount }} au total)</span>
         </span>
         <span v-else>Chargement des communautés...</span>
@@ -319,10 +312,18 @@ const formatDate = (dateString) => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
                 <button v-if="community.isOwner" @click="editCommunity(community.id, $event)"
-                  class="text-indigo-600 hover:text-indigo-900 mr-2">
+                  class="inline-flex items-center px-3 py-1.5 border border-indigo-300 shadow-sm text-sm leading-4 font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                   Modifier
                 </button>
-                <button class="text-indigo-600 hover:text-indigo-900">
+                <button @click="navigateToDetail(community.id)"
+                  class="inline-flex items-center px-3 py-1.5 border border-indigo-300 shadow-sm text-sm leading-4 font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
                   Voir
                 </button>
               </td>
@@ -333,16 +334,12 @@ const formatDate = (dateString) => {
     </div>
 
     <!-- Modal de création de communauté -->
-    <BaseModal 
-      :show="showCreateModal" 
-      title="Créer une nouvelle communauté" 
-      size="lg"
-      @close="closeCreateModal"
-    >
-      <CommunityForm 
-        @success="handleCommunityCreated" 
-        @cancel="closeCreateModal"
-      />
+    <BaseModal :show="showCreateModal" title="Créer une nouvelle communauté" size="lg" @close="closeCreateModal">
+      <CommunityForm @success="handleCommunityCreated" @cancel="closeCreateModal" />
+      <template #footer>
+        <!-- Slot vide pour supprimer les boutons par défaut du modal -->
+        <span></span>
+      </template>
     </BaseModal>
   </div>
 </template>

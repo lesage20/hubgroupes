@@ -42,9 +42,9 @@ export const COMMUNITIES = {
   CREATE: '/community',
   UPDATE: (id) => `/community/${id}`,
   DELETE: (id) => `/community/${id}`,
-  GET_MEMBERS: (id) => `/community/${id}/members/all`,
-  ADD_MEMBER: (id) => `/community/${id}/members`,
-  REMOVE_MEMBER: (id, memberId) => `/community/${id}/members/${memberId}`,
+  GET_MEMBERS: (id) => `/community/members/all`,
+  ADD_MEMBER: (id) => `/community/members`,
+  REMOVE_MEMBER: (id, memberId) => `/community/members/${memberId}`,
   UPDATE_COVER: (id) => `/community/${id}/cover`
 };
 
