@@ -218,14 +218,14 @@
                                                         <div class="text-sm font-medium text-gray-900">
                                                             {{ member.User.first_name }} {{ member.User.last_name }}
                                                         </div>
-                                                        <div class="text-sm text-gray-500">
+                                                        <!-- <div class="text-sm text-gray-500">
                                                             {{ member.User.phone_number || 'Pas de téléphone' }}
-                                                        </div>
+                                                        </div> -->
                                                     </div>
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-900">{{ member.User.email || 'Pas d\'email' }}</div>
+                                                <div class="text-sm text-gray-900">{{ member.User.email || "Pas d'email" }}</div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="text-sm text-gray-900">

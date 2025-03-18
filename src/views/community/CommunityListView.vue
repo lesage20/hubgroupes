@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCommunityStore } from '@/stores/community'
 import { useAuthStore } from '@/stores/auth'
@@ -21,6 +21,10 @@ const searchQuery = ref('')
 const selectedFilter = ref('owner') // public, owner
 const refreshing = ref(false)
 const showCreateModal = ref(false)
+
+// Pagination
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
 
 // Filtres disponibles
 const filters = [
@@ -103,9 +107,27 @@ const filteredCommunities = computed(() => {
   return filtered
 })
 
+// Pagination des communautés filtrées
+const paginatedCommunities = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredCommunities.value.slice(start, end);
+});
+
 // Nombre total de communautés et nombre de communautés filtrées
 const totalCount = computed(() => communities.value.length)
 const filteredCount = computed(() => filteredCommunities.value.length)
+const totalPages = computed(() => Math.ceil(filteredCount.value / itemsPerPage.value) || 1)
+
+// Réinitialiser la pagination quand les filtres changent
+const resetPagination = () => {
+  currentPage.value = 1;
+}
+
+// Surveiller les changements de filtres et de recherche
+watch([searchQuery, selectedFilter], () => {
+  resetPagination();
+})
 
 const navigateToDetail = (communityId) => {
   router.push({ name: 'community-details', params: { id: communityId } })
@@ -208,11 +230,9 @@ const formatDate = (dateString) => {
     <!-- Compteur d'éléments -->
     <div class="flex justify-between items-center mb-4">
       <div class="text-sm text-gray-700">
-        <span v-if="!isLoading">
-          <span class="font-medium">{{ filteredCount }}</span> communauté{{ filteredCount !== 1 ? 's' : '' }}
-          <span v-if="filteredCount !== totalCount">(sur {{ totalCount }} au total)</span>
+        <span v-if="isLoading">
+          Chargement des communautés...
         </span>
-        <span v-else>Chargement des communautés...</span>
       </div>
     </div>
 
@@ -280,7 +300,7 @@ const formatDate = (dateString) => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="community in filteredCommunities" :key="community.id" class="hover:bg-gray-50 cursor-pointer"
+            <tr v-for="community in paginatedCommunities" :key="community.id" class="hover:bg-gray-50 cursor-pointer"
               @click="navigateToDetail(community.id)">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
@@ -330,6 +350,33 @@ const formatDate = (dateString) => {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="filteredCommunities.length > 0" class="flex justify-between items-center mt-6">
+      <div class="text-sm text-gray-700">
+        Affichage de <span class="font-medium">{{ (currentPage - 1) * itemsPerPage + 1 }}</span> à 
+        <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, filteredCount) }}</span> sur 
+        <span class="font-medium">{{ filteredCount }}</span> communautés
+      </div>
+      <div class="flex space-x-2">
+        <button 
+          @click="currentPage = Math.max(1, currentPage - 1)" 
+          :disabled="currentPage === 1"
+          class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+          :class="{ 'opacity-50 cursor-not-allowed': currentPage === 1 }"
+        >
+          Précédent
+        </button>
+        <button 
+          @click="currentPage = Math.min(totalPages, currentPage + 1)" 
+          :disabled="currentPage === totalPages"
+          class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+          :class="{ 'opacity-50 cursor-not-allowed': currentPage === totalPages }"
+        >
+          Suivant
+        </button>
       </div>
     </div>
 

@@ -10,8 +10,18 @@
       </RouterLink>
     </div>
 
+    <!-- Message d'erreur -->
+    <div v-if="error" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+      {{ error }}
+    </div>
+
+    <!-- Sélection de communauté -->
+    <div v-if="communities.length === 0 && !loading" class="mb-6 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+      Vous n'êtes membre d'aucune communauté. Rejoignez une communauté pour voir ses membres.
+    </div>
+
     <!-- Filtres et recherche -->
-    <div class="mb-6 flex flex-col md:flex-row gap-4">
+    <div v-if="communities.length > 0" class="mb-6 flex flex-col md:flex-row gap-4">
       <div class="relative flex-grow">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -29,32 +39,34 @@
         v-model="statusFilter" 
         class="border border-gray-300 rounded-md px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500"
       >
-        <option value="all">Tous les statuts</option>
+        <option value="">Tous les statuts</option>
         <option value="active">Actifs</option>
         <option value="pending">En attente</option>
         <option value="inactive">Inactifs</option>
       </select>
       <select 
-        v-model="communityFilter" 
+        v-model="selectedCommunityId" 
         class="border border-gray-300 rounded-md px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+        @change="loadCommunityMembers"
       >
-        <option value="all">Toutes les communautés</option>
+        <option disabled value="">Sélectionner une communauté</option>
         <option v-for="community in communities" :key="community.id" :value="community.id">
-          {{ community.name }}
+          {{ community.label }}
         </option>
       </select>
     </div>
 
     <!-- Tableau des membres -->
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
+      <div v-if="loading" class="flex justify-center items-center py-10">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+      </div>
+      
+      <table v-else class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Membre
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Communauté
             </th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Statut
@@ -71,30 +83,26 @@
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-if="loading">
-            <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
-              Chargement des membres...
-            </td>
-          </tr>
-          <tr v-else-if="filteredMembers.length === 0">
-            <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+          <tr v-if="paginatedMembers.length === 0">
+            <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
               Aucun membre trouvé
             </td>
           </tr>
-          <tr v-for="member in filteredMembers" :key="member.id" class="hover:bg-gray-50">
+          <tr v-for="member in paginatedMembers" :key="member.id" class="hover:bg-gray-50">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
                 <div class="h-10 w-10 flex-shrink-0">
-                  <img class="h-10 w-10 rounded-full" :src="member.avatar" alt="" />
+                  <img class="h-10 w-10 rounded-full" :src="member.User?.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(member.User?.first_name + ' ' + member.User?.last_name)" alt="" />
                 </div>
                 <div class="ml-4">
-                  <div class="text-sm font-medium text-gray-900">{{ member.name }}</div>
-                  <div class="text-sm text-gray-500">{{ member.email }}</div>
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ member.User?.first_name }} {{ member.User?.last_name }}
+                  </div>
+                  <div class="text-sm text-gray-500">
+                    {{ member.User?.email }}
+                  </div>
                 </div>
               </div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm text-gray-900">{{ getCommunityName(member.communityId) }}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <span 
@@ -109,17 +117,17 @@
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ formatDate(member.joinedAt) }}
+              {{ formatDate(member.register_date || member.created_at) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
               <span 
                 :class="[
                   'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                  member.subscriptionStatus === 'paid' ? 'bg-green-100 text-green-800' : 
+                  member.subscription_status === 'paid' ? 'bg-green-100 text-green-800' : 
                   'bg-red-100 text-red-800'
                 ]"
               >
-                {{ member.subscriptionStatus === 'paid' ? 'À jour' : 'En retard' }}
+                {{ member.subscription_status === 'paid' ? 'À jour' : 'En retard' }}
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -180,93 +188,160 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMemberStore } from '@/stores/member'
-import { useCommunityStore } from '@/stores/community'
+import MemberService from '@/services/memberService'
+import CommunityService from '@/services/communityService'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
-const memberStore = useMemberStore()
-const communityStore = useCommunityStore()
+const authStore = useAuthStore()
 
 // État local
 const searchQuery = ref('')
-const statusFilter = ref('all')
-const communityFilter = ref('all')
+const statusFilter = ref('')
+const selectedCommunityId = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 const loading = ref(true)
+const communities = ref([])
+const members = ref([])
+const error = ref(null)
 
 // Récupération des données
 onMounted(async () => {
   try {
-    await Promise.all([
-      memberStore.fetchMembers(),
-      communityStore.fetchCommunities()
-    ])
-  } catch (error) {
-    console.error('Erreur lors du chargement des données:', error)
+    loading.value = true;
+    
+    // Charger toutes les communautés de l'utilisateur
+    await fetchUserCommunities();
+    
+    // Sélectionner automatiquement une communauté
+    await selectDefaultCommunity();
+    
+    // Charger les membres de la communauté sélectionnée
+    if (selectedCommunityId.value) {
+      await loadCommunityMembers();
+    }
+  } catch (err) {
+    console.error('Erreur lors du chargement initial:', err);
+    error.value = 'Erreur lors du chargement des données. Veuillez réessayer.';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 })
 
-// Computed properties
-const members = computed(() => memberStore.members)
-const communities = computed(() => communityStore.communities)
-
-const filteredMembers = computed(() => {
-  return members.value
-    .filter(member => {
-      // Filtre par recherche
-      const matchesSearch = searchQuery.value === '' || 
-        member.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        member.email.toLowerCase().includes(searchQuery.value.toLowerCase())
-      
-      // Filtre par statut
-      const matchesStatus = statusFilter.value === 'all' || member.status === statusFilter.value
-      
-      // Filtre par communauté
-      const matchesCommunity = communityFilter.value === 'all' || member.communityId === parseInt(communityFilter.value)
-      
-      return matchesSearch && matchesStatus && matchesCommunity
-    })
-    .slice(paginationStart.value - 1, paginationEnd.value)
-})
-
-const totalMembers = computed(() => {
-  return members.value.filter(member => {
-    // Filtre par recherche
-    const matchesSearch = searchQuery.value === '' || 
-      member.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.value.toLowerCase())
-    
-    // Filtre par statut
-    const matchesStatus = statusFilter.value === 'all' || member.status === statusFilter.value
-    
-    // Filtre par communauté
-    const matchesCommunity = communityFilter.value === 'all' || member.communityId === parseInt(communityFilter.value)
-    
-    return matchesSearch && matchesStatus && matchesCommunity
-  }).length
-})
-
-const totalPages = computed(() => Math.ceil(totalMembers.value / itemsPerPage.value))
-
-const paginationStart = computed(() => {
-  return (currentPage.value - 1) * itemsPerPage.value + 1
-})
-
-const paginationEnd = computed(() => {
-  return Math.min(currentPage.value * itemsPerPage.value, totalMembers.value)
-})
-
-// Méthodes
-function getCommunityName(communityId) {
-  const community = communities.value.find(c => c.id === communityId)
-  return community ? community.name : 'N/A'
+// Charger les communautés de l'utilisateur
+const fetchUserCommunities = async () => {
+  try {
+    // Utiliser le service communauté pour récupérer les communautés de l'utilisateur
+    const userId = authStore.user?.id;
+    const response = await CommunityService.getMyCommunities(userId);
+    communities.value = response.data?.data?.communities || [];
+  } catch (err) {
+    console.error('Erreur lors du chargement des communautés:', err);
+    error.value = 'Erreur lors du chargement des communautés.';
+    communities.value = [];
+  }
 }
 
+// Sélectionner une communauté par défaut
+const selectDefaultCommunity = async () => {
+  if (communities.value.length === 0) {
+    selectedCommunityId.value = '';
+    return;
+  }
+  
+  // Récupérer l'utilisateur connecté
+  const currentUser = authStore.user;
+  
+  // Chercher une communauté dont l'utilisateur est créateur
+  const creatorCommunity = communities.value.find(
+    community => community.creator_id === currentUser?.id || 
+                community.owner_id === currentUser?.id
+  );
+  
+  if (creatorCommunity) {
+    // Si l'utilisateur est créateur d'une communauté, la sélectionner
+    selectedCommunityId.value = creatorCommunity.id;
+  } else {
+    // Sinon, sélectionner la première communauté
+    selectedCommunityId.value = communities.value[0]?.id || '';
+  }
+}
+
+// Charger les membres de la communauté sélectionnée
+const loadCommunityMembers = async () => {
+  if (!selectedCommunityId.value) {
+    members.value = [];
+    return;
+  }
+  
+  try {
+    loading.value = true;
+    error.value = null;
+    
+    // Utiliser le service membre pour récupérer les membres de la communauté
+    const response = await MemberService.getMembers(selectedCommunityId.value);
+    members.value = response.data?.data?.members || [];
+    
+    // Réinitialiser la pagination
+    currentPage.value = 1;
+  } catch (err) {
+    console.error('Erreur lors du chargement des membres:', err);
+    error.value = 'Erreur lors du chargement des membres.';
+    members.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Filtrer les membres en fonction des critères de recherche
+const filteredMembers = computed(() => {
+  if (!members.value.length) return [];
+  
+  return members.value.filter(member => {
+    // Filtre par recherche
+    const searchMatch = !searchQuery.value || 
+      `${member.User?.first_name} ${member.User?.last_name}`.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
+      member.User?.email?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      member.User?.phone_number?.toLowerCase().includes(searchQuery.value.toLowerCase());
+    
+    // Filtre par statut
+    const statusMatch = statusFilter.value === '' || member.status === statusFilter.value;
+    
+    return searchMatch && statusMatch;
+  });
+});
+
+// Pagination des membres filtrés
+const paginatedMembers = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredMembers.value.slice(start, end);
+});
+
+// Computed properties
+const totalMembers = computed(() => {
+  return filteredMembers.value.length;
+});
+
+const totalPages = computed(() => Math.ceil(totalMembers.value / itemsPerPage.value) || 1);
+
+const paginationStart = computed(() => {
+  return Math.min((currentPage.value - 1) * itemsPerPage.value + 1, totalMembers.value);
+});
+
+const paginationEnd = computed(() => {
+  return Math.min(currentPage.value * itemsPerPage.value, totalMembers.value);
+});
+
+// Réinitialiser la pagination quand les filtres changent
+watch([searchQuery, statusFilter, selectedCommunityId], () => {
+  currentPage.value = 1;
+});
+
+// Méthodes
 function getStatusText(status) {
   switch (status) {
     case 'active': return 'Actif'
@@ -277,8 +352,17 @@ function getStatusText(status) {
 }
 
 function formatDate(dateString) {
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('fr-FR').format(date)
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('fr-FR', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    }).format(date);
+  } catch (err) {
+    return 'Date invalide';
+  }
 }
 
 function viewMember(memberId) {
@@ -287,18 +371,30 @@ function viewMember(memberId) {
 
 async function validateMember(memberId) {
   try {
-    await memberStore.validateMember(memberId)
+    // Vérifier si le service a cette méthode, sinon utiliser une méthode appropriée
+    if (typeof MemberService.validateMember === 'function') {
+      await MemberService.validateMember(selectedCommunityId.value, memberId);
+    } else {
+      // Utiliser updateMember comme alternative
+      await MemberService.updateMember(selectedCommunityId.value, memberId, { status: 'active' });
+    }
+    // Recharger les membres après la validation
+    await loadCommunityMembers();
   } catch (error) {
-    console.error('Erreur lors de la validation du membre:', error)
+    console.error('Erreur lors de la validation du membre:', error);
+    alert('Erreur lors de la validation du membre');
   }
 }
 
 async function removeMember(memberId) {
   if (confirm('Êtes-vous sûr de vouloir supprimer ce membre ?')) {
     try {
-      await memberStore.removeMember(memberId)
+      await MemberService.removeMember(selectedCommunityId.value, memberId);
+      // Recharger les membres après la suppression
+      await loadCommunityMembers();
     } catch (error) {
-      console.error('Erreur lors de la suppression du membre:', error)
+      console.error('Erreur lors de la suppression du membre:', error);
+      alert('Erreur lors de la suppression du membre');
     }
   }
 }
