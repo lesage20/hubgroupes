@@ -42,23 +42,24 @@ export const COMMUNITIES = {
   CREATE: '/community',
   UPDATE: (id) => `/community/${id}`,
   DELETE: (id) => `/community/${id}`,
-  GET_MEMBERS: (id) => `/community/members/all`,
-  ADD_MEMBER: (id) => `/community/members`,
+  GET_MEMBERS: '/community/members/all',
+  ADD_MEMBER: '/community/members',
   REMOVE_MEMBER: (id, memberId) => `/community/members/${memberId}`,
   UPDATE_COVER: (id) => `/community/${id}/cover`
 };
 
 // Endpoints des activités
 export const ACTIVITIES = {
-  GET_ALL: '/activities',
-  GET_BY_ID: (id) => `/activities/${id}`,
-  CREATE: '/activities',
-  UPDATE: (id) => `/activities/${id}`,
-  DELETE: (id) => `/activities/${id}`,
-  GET_PARTICIPANTS: (id) => `/activities/${id}/participants`,
-  ADD_PARTICIPANT: (id) => `/activities/${id}/participants`,
-  REMOVE_PARTICIPANT: (id, participantId) => `/activities/${id}/participants/${participantId}`,
-  UPDATE_COVER: (id) => `/activities/${id}/cover`
+  GET_COMMUNITY_UPCOMING_EVENTS: 'activity/community-upcoming-events',
+  GET_COMMUNITY_PAST_EVENTS: 'activity/community-past-events',
+  GET_BY_ID: (id) => `/activity/${id}`,
+  CREATE: '/activity',
+  UPDATE: (id) => `/activity/${id}`,
+  DELETE: (id) => `/activity/${id}`,
+  GET_PARTICIPANTS: (id) => `/activity/${id}/participants`,
+  ADD_PARTICIPANT: (id) => `/activity/${id}/participants`,
+  REMOVE_PARTICIPANT: (id, participantId) => `/activity/${id}/participants/${participantId}`,
+  UPDATE_COVER: (id) => `/activity/${id}/cover`
 };
 
 // Endpoints des cotisations

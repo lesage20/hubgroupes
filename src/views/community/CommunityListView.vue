@@ -95,8 +95,8 @@ const filteredCommunities = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(community =>
-      community.name.toLowerCase().includes(query) ||
-      (community.description && community.description.toLowerCase().includes(query))
+      community.label.toLowerCase().includes(query) ||
+      (community.short_description?.toLowerCase().includes(query))
     )
   }
 

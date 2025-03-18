@@ -11,7 +11,7 @@ class MemberService {
    * @returns {Promise} - Promesse contenant les données des membres
    */
   getMembers(communityId) {
-    return ApiService.get(COMMUNITIES.GET_MEMBERS(communityId));
+    return ApiService.post(COMMUNITIES.GET_MEMBERS, { communityId });
   }
 
   /**

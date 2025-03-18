@@ -15,6 +15,26 @@ const ActivityService = {
   },
 
   /**
+   * Récupère les événements à venir d'une communauté
+   * @param {string|number} communityId - L'ID de la communauté
+   * @param {Object} params - Les paramètres de filtrage (pagination, tri, etc.)
+   * @returns {Promise} - La promesse de la réponse
+   */
+  getCommunityUpcomingEvents(communityId, params = {}) {
+    return ApiService.post(ACTIVITIES.GET_COMMUNITY_UPCOMING_EVENTS, { communityId: communityId, ...params });
+  },
+
+  /**
+   * Récupère les événements passés d'une communauté
+   * @param {string|number} communityId - L'ID de la communauté
+   * @param {Object} params - Les paramètres de filtrage (pagination, tri, etc.)
+   * @returns {Promise} - La promesse de la réponse
+   */
+  getCommunityPastEvents(communityId, params = {}) {
+    return ApiService.post(ACTIVITIES.GET_COMMUNITY_PAST_EVENTS, { communityId: communityId, ...params });
+  },
+
+  /**
    * Récupère une activité par son ID
    * @param {string|number} id - L'ID de l'activité
    * @returns {Promise} - La promesse de la réponse
