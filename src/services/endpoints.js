@@ -52,6 +52,8 @@ export const COMMUNITIES = {
 export const ACTIVITIES = {
   GET_COMMUNITY_UPCOMING_EVENTS: 'activity/community-upcoming-events',
   GET_COMMUNITY_PAST_EVENTS: 'activity/community-past-events',
+  GET_USER_UPCOMING_EVENTS: 'activity/user-upcoming-events',
+  GET_USER_PAST_EVENTS: 'activity/user-past-events',
   GET_BY_ID: (id) => `/activity/${id}`,
   CREATE: '/activity',
   UPDATE: (id) => `/activity/${id}`,

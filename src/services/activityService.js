@@ -35,6 +35,26 @@ const ActivityService = {
   },
 
   /**
+   * Récupère les événements à venir d'un utilisateur
+   * @param {string|number} userId - L'ID de l'utilisateur
+   * @param {Object} params - Les paramètres de filtrage (pagination, tri, etc.)
+   * @returns {Promise} - La promesse de la réponse
+   */
+  getUserUpcomingEvents(userId, params = {}) {
+    return ApiService.post(ACTIVITIES.GET_USER_UPCOMING_EVENTS, { userId: userId, ...params });
+  },
+
+  /**
+   * Récupère les événements passés d'un utilisateur
+   * @param {string|number} userId - L'ID de l'utilisateur
+   * @param {Object} params - Les paramètres de filtrage (pagination, tri, etc.)
+   * @returns {Promise} - La promesse de la réponse
+   */
+  getUserPastEvents(userId, params = {}) {
+    return ApiService.post(ACTIVITIES.GET_USER_PAST_EVENTS, { userId: userId, ...params });
+  },
+
+  /**
    * Récupère une activité par son ID
    * @param {string|number} id - L'ID de l'activité
    * @returns {Promise} - La promesse de la réponse
