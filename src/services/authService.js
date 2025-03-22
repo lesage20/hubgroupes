@@ -301,22 +301,142 @@ const AuthService = {
    * @returns {Promise} - La promesse de la réponse
    */
   updatePassword(passwordData) {
-    console.log('Mise à jour du mot de passe utilisateur');
-    const authStore = useAuthStore();
-    const userId = authStore.user?.id || authStore.user?._id;
-    
-    if (!userId) {
-      console.error('Impossible de mettre à jour le mot de passe: ID utilisateur non disponible');
-      return Promise.reject(new Error('ID utilisateur non disponible'));
-    }
-    
-    return ApiService.put(USERS.CHANGE_PASSWORD(userId), passwordData)
+    console.log('Mise à jour du mot de passe:', passwordData);
+    return ApiService.post(USERS.CHANGE_PASSWORD(), passwordData)
       .then(response => {
-        console.log('Mot de passe utilisateur mis à jour:', response.data);
-        return response.data;
+        console.log('Mot de passe mis à jour avec succès:', response.data);
+        return response;
       })
       .catch(error => {
         console.error('Erreur lors de la mise à jour du mot de passe:', error);
+        throw error;
+      });
+  },
+
+  /**
+   * Active la 2FA pour l'utilisateur
+   * @param {string} method - La méthode de 2FA (phone, email, totp)
+   * @returns {Promise} - La promesse de la réponse avec les informations de configuration
+   */
+  enable2FA(method) {
+    console.log('Activation de la 2FA avec la méthode:', method);
+    return ApiService.post(AUTH.ENABLE_2FA, method )
+      .then(response => {
+        console.log('2FA activée avec succès:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('Erreur lors de l\'activation de la 2FA:', error);
+        throw error;
+      });
+  },
+
+  /**
+   * Vérifie le code 2FA et finalise l'activation
+   * @param {string} code - Le code de vérification
+   * @param {string} method - La méthode de 2FA (phone, email, totp)
+   * @returns {Promise} - La promesse de la réponse
+   */
+  verify2FA(code, method) {
+    console.log('Vérification du code 2FA:', code, 'pour la méthode:', method);
+    return ApiService.post(AUTH.VERIFY_2FA, { code, method })
+      .then(response => {
+        console.log('Code 2FA vérifié avec succès:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('Erreur lors de la vérification du code 2FA:', error);
+        throw error;
+      });
+  },
+
+  /**
+   * Désactive la 2FA pour l'utilisateur
+   * @param {string} password - Le mot de passe de l'utilisateur pour confirmation
+   * @returns {Promise} - La promesse de la réponse
+   */
+  disable2FA(password) {
+    console.log('Désactivation de la 2FA');
+    return ApiService.post(AUTH.DISABLE_2FA, { password })
+      .then(response => {
+        console.log('2FA désactivée avec succès:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('Erreur lors de la désactivation de la 2FA:', error);
+        throw error;
+      });
+  },
+
+  /**
+   * Génère des codes de récupération pour la 2FA
+   * @param {string} password - Le mot de passe de l'utilisateur pour confirmation
+   * @returns {Promise} - La promesse de la réponse avec les codes de récupération
+   */
+  generateRecoveryCodes(password) {
+    console.log('Génération des codes de récupération 2FA');
+    return ApiService.post(AUTH.GENERATE_2FA_RECOVERY_CODES, { password })
+      .then(response => {
+        console.log('Codes de récupération générés avec succès');
+        return response;
+      })
+      .catch(error => {
+        console.error('Erreur lors de la génération des codes de récupération:', error);
+        throw error;
+      });
+  },
+
+  /**
+   * Récupère la liste des clés d'accès de l'utilisateur
+   * @returns {Promise} - La promesse de la réponse avec la liste des clés
+   */
+  getAccessKeys() {
+    console.log('Récupération des clés d\'accès');
+    return ApiService.get(AUTH.LIST_ACCESS_KEYS)
+      .then(response => {
+        console.log('Clés d\'accès récupérées avec succès:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('Erreur lors de la récupération des clés d\'accès:', error);
+        throw error;
+      });
+  },
+
+  /**
+   * Crée une nouvelle clé d'accès
+   * @param {string} name - Le nom de la clé d'accès
+   * @param {string} password - Le mot de passe de l'utilisateur pour confirmation
+   * @returns {Promise} - La promesse de la réponse avec la nouvelle clé
+   */
+  createAccessKey(name, password) {
+    console.log('Création d\'une nouvelle clé d\'accès:', name);
+    return ApiService.post(AUTH.CREATE_ACCESS_KEY, { name, password })
+      .then(response => {
+        console.log('Clé d\'accès créée avec succès:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('Erreur lors de la création de la clé d\'accès:', error);
+        throw error;
+      });
+  },
+
+  /**
+   * Supprime une clé d'accès
+   * @param {string} keyId - L'ID de la clé d'accès à supprimer
+   * @param {string} password - Le mot de passe de l'utilisateur pour confirmation
+   * @returns {Promise} - La promesse de la réponse
+   */
+  deleteAccessKey(keyId, password) {
+    console.log('Suppression de la clé d\'accès:', keyId);
+    return ApiService.delete(AUTH.DELETE_ACCESS_KEY(keyId), { data: { password } })
+      .then(response => {
+        console.log('Clé d\'accès supprimée avec succès:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('Erreur lors de la suppression de la clé d\'accès:', error);
         throw error;
       });
   }

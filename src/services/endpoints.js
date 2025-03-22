@@ -13,13 +13,20 @@ console.log('API Base URL configurée:', API_BASE_URL);
 
 // Endpoints d'authentification
 export const AUTH = {
-  LOGIN: '/auth/sign-in',
+  LOGIN: '/auth/sign-in/',
   REGISTER: '/auth/register',
   LOGOUT: '/auth/sign-out',
   REFRESH_TOKEN: '/auth/refresh-token',
   FORGOT_PASSWORD: '/auth/forgot-password',
   RESET_PASSWORD: '/auth/reset-password',
-  VERIFY_EMAIL: '/auth/verify-email'
+  VERIFY_EMAIL: '/auth/verify-email',
+  ENABLE_2FA: '/auth/send-otp',
+  VERIFY_2FA: '/auth/verify-otp',
+  DISABLE_2FA: '/auth/disable-2fa',
+  GENERATE_2FA_RECOVERY_CODES: '/auth/generate-recovery-codes',
+  LIST_ACCESS_KEYS: '/auth/access-keys',
+  CREATE_ACCESS_KEY: '/auth/access-keys',
+  DELETE_ACCESS_KEY: (id) => `/auth/access-keys/${id}`
 };
 
 // Endpoints des utilisateurs
@@ -31,7 +38,9 @@ export const USERS = {
   UPDATE: (id) => `/user/${id}`,
   DELETE: (id) => `/user/${id}`,
   UPDATE_AVATAR: (id) => `/user/profile-picture`,
-  CHANGE_PASSWORD: (id) => `/user/change-password`
+  CHANGE_PASSWORD: (id) => `/user/change-passwd`,
+  GET_OTP: (id) => `/user/send-otp`,
+  VERIFY_OTP: (id) => `/user/verify-otp`
 };
 
 // Endpoints des communautés

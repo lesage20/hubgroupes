@@ -25,8 +25,8 @@
       <select v-model="communityFilter"
         class="border border-gray-300 rounded-md px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500">
         <option value="all">Toutes les communautés</option>
-        <option v-for="community in communities" :key="community.id" :value="community.id">
-          {{ community.name }}
+        <option v-for="community in communities" :key="community.id" :value="community.label">
+          {{ community.label || community.name }}
         </option>
       </select>
     </div>
@@ -179,10 +179,11 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useActivityStore } from '@/stores/activity'
 import { useCommunityStore } from '@/stores/community'
+import { useActivityStore } from '@/stores/activity'
 import { useAuthStore } from '@/stores/auth'
 import ActivityService from '@/services/activityService'
+import CommunityService from '@/services/communityService'
 
 const router = useRouter()
 const activityStore = useActivityStore()
@@ -249,10 +250,18 @@ const fetchActivities = async () => {
 // Récupérer les communautés
 const fetchCommunities = async () => {
   try {
-    const response = await communityStore.fetchCommunities()
-    communities.value = response || []
+    // Récupérer les communautés directement depuis l'API
+    const response = await CommunityService.getMyCommunities(authStore.user?.id)
+    if (response && response.data && response.data.data && response.data.data.communities) {
+      communities.value = response.data.data.communities
+      console.log('Communautés récupérées:', communities.value)
+    } else {
+      communities.value = []
+      console.warn('Format de réponse inattendu pour les communautés:', response)
+    }
   } catch (err) {
     console.error('Erreur lors du chargement des communautés:', err)
+    communities.value = []
   }
 }
 
@@ -272,7 +281,7 @@ const filteredActivities = computed(() => {
     
     // Filtre par communauté
     const matchesCommunity = communityFilter.value === 'all' || 
-      activity.communityId?.toString() === communityFilter.value
+      activity.Community?.label?.toString() === communityFilter.value
     
     return matchesSearch && matchesCommunity
   })

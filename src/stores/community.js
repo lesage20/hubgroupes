@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import CommunityService from '@/services/communityService'
+import { useAuthStore } from './auth'
 
 export const useCommunityStore = defineStore('community', () => {
   // État
@@ -23,48 +25,32 @@ export const useCommunityStore = defineStore('community', () => {
     error.value = null
     
     try {
-      // Simulation d'un appel API (à remplacer par un vrai appel API)
-      // const response = await api.get('/communities')
+      // Utiliser le service de communauté pour récupérer les vraies données
+      const authStore = useAuthStore()
+      const userId = authStore.user?.id
       
-      // Pour la démo, on simule une réponse
-      const response = {
-        data: {
-          communities: [
-            {
-              id: 1,
-              name: 'Club de Tennis',
-              description: 'Club de tennis local pour tous les niveaux',
-              status: 'active',
-              memberCount: 45,
-              createdAt: '2024-01-15',
-              logo: 'https://placehold.co/100x100?text=Tennis'
-            },
-            {
-              id: 2,
-              name: 'Association Culturelle',
-              description: 'Promotion de la culture et des arts',
-              status: 'active',
-              memberCount: 78,
-              createdAt: '2024-02-20',
-              logo: 'https://placehold.co/100x100?text=Culture'
-            },
-            {
-              id: 3,
-              name: 'Club de Lecture',
-              description: 'Rencontres mensuelles pour discuter de livres',
-              status: 'active',
-              memberCount: 23,
-              createdAt: '2024-03-05',
-              logo: 'https://placehold.co/100x100?text=Livres'
-            }
-          ]
-        }
+      let response
+      if (userId) {
+        // Récupérer les communautés de l'utilisateur
+        response = await CommunityService.getMyCommunities(userId)
+      } else {
+        // Récupérer toutes les communautés si l'utilisateur n'est pas connecté
+        response = await CommunityService.getAllCommunities()
       }
       
-      communities.value = response.data.communities
-      return response.data.communities
+      // Mettre à jour l'état avec les données reçues
+      if (response && response.data && response.data.data && response.data.data.communities) {
+        communities.value = response.data.data.communities
+      } else {
+        communities.value = []
+        console.warn('Format de réponse inattendu:', response)
+      }
+      
+      return communities.value
     } catch (err) {
+      console.error('Erreur lors de la récupération des communautés:', err)
       error.value = err.message || 'Erreur lors de la récupération des communautés'
+      communities.value = []
       throw error.value
     } finally {
       loading.value = false

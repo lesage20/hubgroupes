@@ -12,17 +12,17 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const userData = reactive({
-  firstName: '',
-  lastName: '',
-  phoneNumber: '',
+  first_name: '',
+  last_name: '',
+  phone_number: '',
   password: '',
   confirmPassword: ''
 })
 
 const errors = reactive({
-  firstName: '',
-  lastName: '',
-  phoneNumber: '',
+  first_name: '',
+  last_name: '',
+  phone_number: '',
   password: '',
   confirmPassword: '',
   form: ''
@@ -35,31 +35,31 @@ const validateForm = () => {
   let isValid = true
 
   // Réinitialiser les erreurs
-  errors.firstName = ''
-  errors.lastName = ''
-  errors.phoneNumber = ''
+  errors.first_name = ''
+  errors.last_name = ''
+  errors.phone_number = ''
   errors.password = ''
   errors.confirmPassword = ''
   errors.form = ''
 
   // Valider le prénom
-  if (!userData.firstName) {
-    errors.firstName = 'Le prénom est requis'
+  if (!userData.first_name) {
+    errors.first_name = 'Le prénom est requis'
     isValid = false
   }
 
   // Valider le nom
-  if (!userData.lastName) {
-    errors.lastName = 'Le nom est requis'
+  if (!userData.last_name) {
+    errors.last_name = 'Le nom est requis'
     isValid = false
   }
 
   // Valider le numéro de téléphone
-  if (!userData.phoneNumber) {
-    errors.phoneNumber = 'Le numéro de téléphone est requis'
+  if (!userData.phone_number) {
+    errors.phone_number = 'Le numéro de téléphone est requis'
     isValid = false
-  } else if (!/^(\+\d{1,3})?\d{9,10}$/.test(userData.phoneNumber.replace(/\s/g, ''))) {
-    errors.phoneNumber = 'Format de numéro de téléphone invalide'
+  } else if (!/^(\+\d{1,3})?\d{9,10}$/.test(userData.phone_number.replace(/\s/g, ''))) {
+    errors.phone_number = 'Format de numéro de téléphone invalide'
     isValid = false
   }
 
@@ -93,15 +93,15 @@ const handleRegister = async () => {
   try {
     // Utiliser le service d'authentification au lieu du store directement
     const response = await AuthService.register({
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      username: userData.phoneNumber,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      username: userData.phone_number,
       password: userData.password,
-      phone_number: userData.phoneNumber
+      phone_number: userData.phone_number
     })
 
     // Vérifier si l'inscription a réussi
-    if (response && response.data && response.data.data && response.data.data.token) {
+    if (response && response.data && response.data.message && response.data.message) {
       showSuccessAlert.value = true
 
       // Rediriger après un court délai pour montrer le message de succès
@@ -142,15 +142,15 @@ const handleRegister = async () => {
 
       <form class="space-y-4" @submit.prevent="handleRegister">
         <div class="grid grid-cols-1 gap-x-4 gap-y-0 sm:grid-cols-2">
-          <BaseInput v-model="userData.firstName" label="Prénom" type="text" placeholder="Jean" :required="true"
-            :error="errors.firstName" />
+          <BaseInput v-model="userData.first_name" label="Prénom" type="text" placeholder="Jean" :required="true"
+            :error="errors.first_name" />
 
-          <BaseInput v-model="userData.lastName" label="Nom" type="text" placeholder="Dupont" :required="true"
-            :error="errors.lastName" />
+          <BaseInput v-model="userData.last_name" label="Nom" type="text" placeholder="Dupont" :required="true"
+            :error="errors.last_name" />
         </div>
 
-        <BaseInput v-model="userData.phoneNumber" label="Numéro de téléphone" type="tel" placeholder="+33 6 12 34 56 78"
-          :required="true" :error="errors.phoneNumber" />
+        <BaseInput v-model="userData.phone_number" label="Numéro de téléphone" type="tel" placeholder="+33 6 12 34 56 78"
+          :required="true" :error="errors.phone_number" />
 
         <div class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
           <BaseInput v-model="userData.password" label="Mot de passe" type="password" placeholder="••••••••"
